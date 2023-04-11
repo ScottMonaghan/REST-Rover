@@ -3,15 +3,12 @@ import time
 import ipaddress
 import wifi
 import socketpool
-import busio
 import board
 import microcontroller
-import terminalio
 from digitalio import DigitalInOut, Direction
 from adafruit_httpserver.server import HTTPServer
 from adafruit_httpserver.request import HTTPRequest
 from adafruit_httpserver.response import HTTPResponse
-from adafruit_httpserver.methods import HTTPMethod
 from adafruit_httpserver.mime_type import MIMEType
 import pwmio
 from adafruit_motor.motor import DCMotor
