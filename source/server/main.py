@@ -14,8 +14,8 @@ import pwmio
 from adafruit_motor.motor import DCMotor
 from time import monotonic, sleep
 
-MOTOR_DEFAULT_THROTTLE = 0.8
-MOTOR_TURNING_THROTTLE = 0.5
+MOTOR_DEFAULT_THROTTLE = 1
+MOTOR_TURNING_THROTTLE = 1
 MOTOR_MIN_THROTTLE = 0.3
 MOTOR_LEFT_FRONT = 0
 MOTOR_RIGHT_FRONT = 1
@@ -23,6 +23,8 @@ MOTOR_RIGHT_REAR = 2
 MOTOR_LEFT_REAR = 3
 
 THROTTLE_SMOOTHING = 0.1
+
+ROBOT_TIMEOUT = 0.5 #seconds
 
 class RobotMotor(object):
     def __init__ (self, dcMotor):
@@ -48,7 +50,8 @@ class RobotMotor(object):
 class Robot(object):
     def __init__ (self, motors):
         self.motors = motors
-        
+        self.timeout_clock = monotonic()
+    
     def update_throttles(self):
         for motor in self.motors:
             motor.update_throttle()
@@ -95,121 +98,202 @@ wifi.radio.connect(os.getenv('CIRCUITPY_WIFI_SSID'), os.getenv('CIRCUITPY_WIFI_P
 
 print("Connected to WiFi")
 pool = socketpool.SocketPool(wifi.radio)
-server = HTTPServer(pool)
 
-#  route default static IP
-@server.route("/")
-def base(request: HTTPRequest):  # pylint: disable=unused-argument
-    #  with content type text/html
-    with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
-     response.send("hello world")
+REST_ROVER_PROTOCOL = os.getenv('REST_ROVER_PROTOCOL')
 
-@server.route("/pb/v1/forward")
-def drive_forward(request: HTTPRequest):  # pylint: disable=unused-argument
-    #  with content type text/html
-    with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
-        response.send("forward")
-        robot.motors[MOTOR_LEFT_FRONT].target_throttle = MOTOR_DEFAULT_THROTTLE
-        robot.motors[MOTOR_RIGHT_FRONT].target_throttle = MOTOR_DEFAULT_THROTTLE
-        robot.motors[MOTOR_RIGHT_REAR].target_throttle = MOTOR_DEFAULT_THROTTLE
-        robot.motors[MOTOR_LEFT_REAR].target_throttle = MOTOR_DEFAULT_THROTTLE
-        
+def forward():
+    robot.timeout_clock = monotonic()
+    robot.motors[MOTOR_LEFT_FRONT].target_throttle = MOTOR_DEFAULT_THROTTLE
+    robot.motors[MOTOR_RIGHT_FRONT].target_throttle = MOTOR_DEFAULT_THROTTLE
+    robot.motors[MOTOR_RIGHT_REAR].target_throttle = MOTOR_DEFAULT_THROTTLE
+    robot.motors[MOTOR_LEFT_REAR].target_throttle = MOTOR_DEFAULT_THROTTLE
 
-@server.route("/pb/v1/back")
-def drive_back(request: HTTPRequest):  # pylint: disable=unused-argument
-    #  with content type text/html
-    with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
-        response.send("back")
-        robot.motors[MOTOR_LEFT_FRONT].target_throttle = -1 * MOTOR_DEFAULT_THROTTLE
-        robot.motors[MOTOR_RIGHT_FRONT].target_throttle = -1 * MOTOR_DEFAULT_THROTTLE
-        robot.motors[MOTOR_RIGHT_REAR].target_throttle = -1 * MOTOR_DEFAULT_THROTTLE
-        robot.motors[MOTOR_LEFT_REAR].target_throttle = -1 * MOTOR_DEFAULT_THROTTLE
-
-@server.route("/pb/v1/left")
-def drive_left(request: HTTPRequest):  # pylint: disable=unused-argument
-    #  with content type text/html
-    with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
-        response.send("left")
-        robot.motors[MOTOR_LEFT_FRONT].target_throttle = -1 * MOTOR_TURNING_THROTTLE
-        robot.motors[MOTOR_RIGHT_FRONT].target_throttle = MOTOR_TURNING_THROTTLE
-        robot.motors[MOTOR_RIGHT_REAR].target_throttle = MOTOR_TURNING_THROTTLE
-        robot.motors[MOTOR_LEFT_REAR].target_throttle = -1 * MOTOR_TURNING_THROTTLE
-        
-@server.route("/pb/v1/right")
-def drive_right(request: HTTPRequest):  # pylint: disable=unused-argument
-    #  with content type text/html
-    with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
-        response.send("right")
-        robot.motors[MOTOR_LEFT_FRONT].target_throttle = MOTOR_TURNING_THROTTLE
-        robot.motors[MOTOR_RIGHT_FRONT].target_throttle = -1 * MOTOR_TURNING_THROTTLE
-        robot.motors[MOTOR_RIGHT_REAR].target_throttle = -1 * MOTOR_TURNING_THROTTLE
-        robot.motors[MOTOR_LEFT_REAR].target_throttle = MOTOR_TURNING_THROTTLE
-        
-@server.route("/pb/v1/stop")
-def drive_stop(request: HTTPRequest):  # pylint: disable=unused-argument
-    #  with content type text/html
-    with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
-        response.send("stop")
-        robot.motors[MOTOR_LEFT_FRONT].target_throttle = 0.0
-        robot.motors[MOTOR_RIGHT_FRONT].target_throttle = 0.0
-        robot.motors[MOTOR_RIGHT_REAR].target_throttle = 0.0
-        robot.motors[MOTOR_LEFT_REAR].target_throttle = 0.0
-
-@server.route("/pb/v1/led-on")
-def led_on(request: HTTPRequest):  # pylint: disable=unused-argument
-    #  with content type text/html
-    global led_api_value
-    with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
-        response.send("led on")
+def back():
+    robot.timeout_clock = monotonic()
+    robot.motors[MOTOR_LEFT_FRONT].target_throttle = -1 * MOTOR_DEFAULT_THROTTLE
+    robot.motors[MOTOR_RIGHT_FRONT].target_throttle = -1 * MOTOR_DEFAULT_THROTTLE
+    robot.motors[MOTOR_RIGHT_REAR].target_throttle = -1 * MOTOR_DEFAULT_THROTTLE
+    robot.motors[MOTOR_LEFT_REAR].target_throttle = -1 * MOTOR_DEFAULT_THROTTLE
+def left():
+    robot.timeout_clock = monotonic()
+    robot.motors[MOTOR_LEFT_FRONT].target_throttle = -1 * MOTOR_TURNING_THROTTLE
+    robot.motors[MOTOR_RIGHT_FRONT].target_throttle = MOTOR_TURNING_THROTTLE
+    robot.motors[MOTOR_RIGHT_REAR].target_throttle = MOTOR_TURNING_THROTTLE
+    robot.motors[MOTOR_LEFT_REAR].target_throttle = -1 * MOTOR_TURNING_THROTTLE
+def right():
+    robot.timeout_clock = monotonic()
+    robot.motors[MOTOR_LEFT_FRONT].target_throttle = MOTOR_TURNING_THROTTLE
+    robot.motors[MOTOR_RIGHT_FRONT].target_throttle = -1 * MOTOR_TURNING_THROTTLE
+    robot.motors[MOTOR_RIGHT_REAR].target_throttle = -1 * MOTOR_TURNING_THROTTLE
+    robot.motors[MOTOR_LEFT_REAR].target_throttle = MOTOR_TURNING_THROTTLE
+def stop():
+    robot.timeout_clock = monotonic()
+    robot.motors[MOTOR_LEFT_FRONT].target_throttle = 0.0
+    robot.motors[MOTOR_RIGHT_FRONT].target_throttle = 0.0
+    robot.motors[MOTOR_RIGHT_REAR].target_throttle = 0.0
+    robot.motors[MOTOR_LEFT_REAR].target_throttle = 0.0    
+def led_on():
     led_api_value = True
-
-@server.route("/pb/v1/led-off")
-def led_off(request: HTTPRequest):  # pylint: disable=unused-argument
-    #  with content type text/html
-    global led_api_value
-    with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
-        response.send("led off")
+def led_off():
     led_api_value = False
-print("starting server..")
-# startup the server
-try:
-    server.start(str(wifi.radio.ipv4_address))
-    print("Listening on http://%s:80" % wifi.radio.ipv4_address)
-#  if the server fails to begin, restart the pico w
-except OSError:
-    time.sleep(5)
-    print("restarting..")
-    microcontroller.reset()
-ping_address = ipaddress.ip_address("8.8.4.4")
 
-clock = time.monotonic() - 30 #  time.monotonic() holder for server ping
 
-#target 100hz
-target_rate = 0.01 # 1 hundredth of a second for each loop
 
-while True:
+if REST_ROVER_PROTOCOL == 'http':
+    server = HTTPServer(pool)
+
+    #  route default static IP
+    @server.route("/")
+    def base(request: HTTPRequest):  # pylint: disable=unused-argument
+        #  with content type text/html
+        with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
+            response.send("hello world")
+
+    @server.route("/pb/v1/forward")
+    def drive_forward(request: HTTPRequest):  # pylint: disable=unused-argument
+        #  with content type text/html
+        with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
+            response.send("forward")
+            forward()
+            
+
+    @server.route("/pb/v1/back")
+    def drive_back(request: HTTPRequest):  # pylint: disable=unused-argument
+        #  with content type text/html
+        with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
+            response.send("back")
+            back()
+
+    @server.route("/pb/v1/left")
+    def drive_left(request: HTTPRequest):  # pylint: disable=unused-argument
+        #  with content type text/html
+        with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
+            response.send("left")
+            left()
+            
+    @server.route("/pb/v1/right")
+    def drive_right(request: HTTPRequest):  # pylint: disable=unused-argument
+        #  with content type text/html
+        with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
+            response.send("right")
+            right()
+            
+    @server.route("/pb/v1/stop")
+    def drive_stop(request: HTTPRequest):  # pylint: disable=unused-argument
+        #  with content type text/html
+        if request is not None:
+            with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
+                response.send("stop")
+            stop()
+
+    @server.route("/pb/v1/led-on")
+    def led_on(request: HTTPRequest):  # pylint: disable=unused-argument
+        #  with content type text/html
+        global led_api_value
+        with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
+            response.send("led on")
+        led_on()
+
+    @server.route("/pb/v1/led-off")
+    def led_off(request: HTTPRequest):  # pylint: disable=unused-argument
+        #  with content type text/html
+        global led_api_value
+        with HTTPResponse(request, content_type=MIMEType.TYPE_TXT) as response:
+            response.send("led off")
+        led_off()
+
+    print("starting server..")
+    # startup the server
     try:
-        loop_start = monotonic()
-        #  every 30 seconds
-        if (clock + 30) < time.monotonic():
-            if wifi.radio.ping(ping_address) is None:
-                print("lost connection")
-            else:
-                print("connected")
-            clock = time.monotonic()
-        #  poll the server for incoming/outgoing requests
-        server.poll()
-        led.value = led_api_value
-        robot.update_throttles()
-        loop_duration = (monotonic() - loop_start)/1000
-        if loop_duration < target_rate:
-            sleep(target_rate - loop_duration)
+        server.start(str(wifi.radio.ipv4_address))
+        print("Listening on http://%s:80" % wifi.radio.ipv4_address)
+    #  if the server fails to begin, restart the pico w
+    except OSError:
+        time.sleep(5)
+        print("restarting..")
+        microcontroller.reset()
+    ping_address = ipaddress.ip_address("8.8.4.4")
 
-            
-            
-        
-        
-    # pylint: disable=broad-except
-    except Exception as e:
-        print(e)
-        continue
+    clock = time.monotonic() - 30 #  time.monotonic() holder for server ping
+
+    #target 100hz
+    target_rate = 0.01 # 1 hundredth of a second for each loop
+
+    timeout_clock = monotonic()
+    while True:
+        try:
+            loop_start = monotonic()
+            #  every 30 seconds
+            if (clock + 30) < time.monotonic():
+                if wifi.radio.ping(ping_address) is None:
+                    print("lost connection")
+                else:
+                    print("connected")
+                clock = time.monotonic()
+            #  poll the server for incoming/outgoing requests
+            server.poll()
+            led.value = led_api_value
+            if monotonic() - robot.timeout_clock < ROBOT_TIMEOUT:
+                robot.update_throttles()
+            else:
+                print("timeout")
+                drive_stop(None)
+            loop_duration = (monotonic() - loop_start)/1000
+            if loop_duration < target_rate:
+                sleep(target_rate - loop_duration)      
+        # pylint: disable=broad-except
+        except Exception as e:
+            print(e)
+            continue
+elif REST_ROVER_PROTOCOL == "udp":
+    ## From https://github.com/anecdata/Socket/blob/main/examples/udp_server_CircuitPython_NATIVE.py
+
+    HOST = ""  # see below
+    PORT = 5000
+    TIMEOUT = None
+    MAXBUF = 256
+
+    print("Self IP", wifi.radio.ipv4_address)
+    HOST = str(wifi.radio.ipv4_address)
+    server_ipv4 = ipaddress.ip_address(pool.getaddrinfo(HOST, PORT)[0][4][0])
+    print("Server ping", server_ipv4, wifi.radio.ping(server_ipv4), "ms")
+
+    print("Create UDP Server socket")
+    s = pool.socket(pool.AF_INET, pool.SOCK_DGRAM)
+    s.settimeout(TIMEOUT)
+
+    s.bind((HOST, PORT))
+
+    buf = bytearray(MAXBUF)
+    while True:
+        size, addr = s.recvfrom_into(buf)
+        #print("Received", buf[:size], size, "bytes from", addr)
+
+        size = s.sendto(buf[:size], addr)
+        #print("Sent", buf[:size], size, "bytes to", addr)
+
+        command = buf[:size].decode()
+
+        print('Command: ' + command)
+        if command == 'led_on':
+            led_on()
+        elif command == 'led_off':
+            led_off()
+        elif command == 'stop':
+            stop()
+        elif command == 'forward':
+            forward()
+        elif command == 'back':
+            back()
+        elif command == 'left':
+            left()
+        elif command == 'right':
+            right()
+
+        led.value = led_api_value
+        if monotonic() - robot.timeout_clock < ROBOT_TIMEOUT:
+            robot.update_throttles()
+        else:
+            print("timeout")
+            stop()
+            robot.update_throttles()
