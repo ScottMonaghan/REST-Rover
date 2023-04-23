@@ -14,8 +14,9 @@ import pwmio
 from adafruit_motor.motor import DCMotor
 from time import monotonic, sleep
 
+#todo: move these to settings
 MOTOR_DEFAULT_THROTTLE = 1
-MOTOR_TURNING_THROTTLE = 0.55
+MOTOR_TURNING_THROTTLE = 1
 MOTOR_MIN_THROTTLE = 0.3
 MOTOR_LEFT_FRONT = 0
 MOTOR_RIGHT_FRONT = 1
