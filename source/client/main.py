@@ -73,7 +73,7 @@ elif REST_ROVER_PROTOCOL == 'udp':
     HOST = os.getenv('REST_ROVER_SERVER_IPV4')
     PORT = 5000
     TIMEOUT = 5
-    INTERVAL = 0.1
+    INTERVAL = 0.05
     MAXBUF = 256
 
     print("Self IP", wifi.radio.ipv4_address)

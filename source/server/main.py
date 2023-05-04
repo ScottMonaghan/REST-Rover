@@ -26,7 +26,7 @@ MOTOR_LEFT_REAR = 3
 
 THROTTLE_SMOOTHING = 0.1
 
-ROBOT_TIMEOUT = 0.5 #seconds
+ROBOT_TIMEOUT = 0.1 #seconds
 
 class RobotMotor(object):
     def __init__ (self, dcMotor):
