@@ -13,6 +13,7 @@ from adafruit_httpserver.mime_type import MIMEType
 import pwmio
 from adafruit_motor.motor import DCMotor
 from time import monotonic, sleep
+from errno import ETIMEDOUT
 
 #todo: move these to settings
 MOTOR_DEFAULT_THROTTLE = 1
@@ -261,40 +262,35 @@ elif REST_ROVER_PROTOCOL == "udp":
 
     print("Create UDP Server socket")
     s = pool.socket(pool.AF_INET, pool.SOCK_DGRAM)
-    s.settimeout(TIMEOUT)
+    s.settimeout(ROBOT_TIMEOUT)
 
     s.bind((HOST, PORT))
 
     buf = bytearray(MAXBUF)
     while True:
-        size, addr = s.recvfrom_into(buf)
-        #print("Received", buf[:size], size, "bytes from", addr)
-
-        size = s.sendto(buf[:size], addr)
-        #print("Sent", buf[:size], size, "bytes to", addr)
-
-        command = buf[:size].decode()
-
-        print('Command: ' + command)
-        if command == 'led_on':
-            led_on()
-        elif command == 'led_off':
-            led_off()
-        elif command == 'stop':
-            stop()
-        elif command == 'forward':
-            forward()
-        elif command == 'back':
-            back()
-        elif command == 'left':
-            left()
-        elif command == 'right':
-            right()
+        try:
+            size, addr = s.recvfrom_into(buf)
+            command = buf[:size].decode()
+            print('Command: ' + command)
+            if command == 'led_on':
+                led_on()
+            elif command == 'led_off':
+                led_off()
+            elif command == 'stop':
+                stop()
+            elif command == 'forward':
+                forward()
+            elif command == 'back':
+                back()
+            elif command == 'left':
+                left()
+            elif command == 'right':
+                right()
+        except OSError as e:
+            if e.errno == ETIMEDOUT:
+                print("Timeout: emergency stop")
+                stop()
+            else: raise e
 
         led.value = led_api_value
-        if monotonic() - robot.timeout_clock < ROBOT_TIMEOUT:
-            robot.update_throttles()
-        else:
-            print("timeout")
-            stop()
-            robot.update_throttles()
+        robot.update_throttles()
